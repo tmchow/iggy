@@ -88,25 +88,24 @@ impl Serialize for SendMessages {
         // - messages as an array of {id, payload, headers}
         // We don't expose stream_id and topic_id via JSON as they're in URL path
 
-        let messages: Vec<HashMap<&str, serde_json::Value>> = self
+        let messages: Vec<serde_json::Value> = self
             .batch
             .iter()
             .map(|msg_view: IggyMessageView<'_>| {
-                let mut map = HashMap::with_capacity(self.batch.count() as usize);
-                map.insert("id", serde_json::to_value(msg_view.header().id()).unwrap());
-
-                let payload_base64 = BASE64.encode(msg_view.payload());
-                map.insert("payload", serde_json::to_value(payload_base64).unwrap());
+                let mut obj = serde_json::json!({
+                    "id": msg_view.header().id(),
+                    "payload": BASE64.encode(msg_view.payload()),
+                });
 
                 if let Ok(Some(headers)) = msg_view.user_headers_map() {
                     let entries: Vec<HeaderEntry> = headers
                         .into_iter()
                         .map(|(k, v)| HeaderEntry { key: k, value: v })
                         .collect();
-                    map.insert("user_headers", serde_json::to_value(&entries).unwrap());
+                    obj["user_headers"] = serde_json::to_value(&entries).unwrap();
                 }
 
-                map
+                obj
             })
             .collect();
 
